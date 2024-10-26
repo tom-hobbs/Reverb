@@ -53,7 +53,22 @@ def polarityshuffle(audio_array):
         audio_array[:,i] = audio_array[:,i] * (-1)
     return audio_array
 
-#hadamard matrix transform
+#generate hadamard matrix (of order n)
+def hadamard_matrix(n):
+    H = np.array([[1]])
+    while H.shape[0] < n:
+        H = np.block([[H, H], [H, -H]])
+    return H
+
+#diffuse with hadamard matrix transform
+def diffuse(audio_array):
+    length = audio_array.shape[0]
+    n = 1 + int(np.log2(length)) # find the nearest power of 2
+    H = hadamard_matrix(np.power(2,n))
+    T = np.zeros((np.power(2,n), audio_array.shape[1]))
+    T[:length, :] = audio_array #pad with zeros
+    output_array = H @ T
+    return output_array
 
 #windowed delay feedback system
 def feedbackdelay(audio_array, delay_time_ms, feedback_gain, sample_rate):
