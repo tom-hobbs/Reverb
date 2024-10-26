@@ -22,9 +22,9 @@ def run_action():
         float(entry7.get()),
         float(entry8.get()),
     )
-    if wet_audio.shape[0] < 13230000
+    if wet_audio.shape[0] < 13230000:
         write(output_path, wet_audio, sample_rate)
-    else
+    else:
         print("!!!! WARNING very large output file !!!!")
         print("file not saved")
 
