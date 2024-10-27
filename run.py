@@ -1,7 +1,6 @@
 import tkinter as tk
 from soundfile import read, write
 from reverb import reverb
-from tkinter import messagebox
 from pathlib import Path
 
 
