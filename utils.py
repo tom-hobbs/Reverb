@@ -8,7 +8,9 @@ def mono(audio_array):
     return mono_array
 
 #convert 2 channel audio to n channels
-def multichannel(audio_array, channels):
+def multichannel(audio_array, 
+                 channels: int = 8
+                 ):
     output_array = np.zeros((audio_array.shape[0],channels))
     for i in range(channels):
         j = i / (channels - 1)
@@ -61,7 +63,12 @@ def hadamard_matrix(n):
     return H
 
 #diffuse with hadamard matrix transform
-def diffuse(audio_array):
+def diffuse(audio_array, window_size):
+    #generate hadamard matrix of size 2^(window_size)
+    n = 2^(window_size)
+    H = np.array([[1]])
+    while H.shape[0] < n:
+        H = np.block([[H, H], [H, -H]])
     length = audio_array.shape[0]
     n = 1 + int(np.log2(length)) # find the nearest power of 2
     H = hadamard_matrix(np.power(2,n))
@@ -69,6 +76,52 @@ def diffuse(audio_array):
     T[:length, :] = audio_array #pad with zeros
     output_array = H @ T
     return output_array
+
+
+#performs a sliding window fast Walsh–Hadamard transform (fwht) on all channels simultaneously
+def fwht(audio_array: np.ndarray,
+          window_size: int = 8 #must be a power of 2
+          ): 
+    
+    assert np.log2(window_size).is_integer(), "window_size must be a power of 2"
+
+    #generates a standard hadamard matrix, H, of order N = 2^k
+    H = np.block([[1]]) #order 1 matrix
+    while H.shape[0] < window_size: #generate hadamard matrix of order = window_size
+        H = np.block([[H, H], [H, -H]])
+
+    #rearrange rows of H in sequency order
+        #window_size == H.shape[0] == H.shape[1]
+    zero_crossings = np.zeros((window_size, window_size + 1)) #generate empty output matrix with column to store sequency data
+    zero_crossings[:window_size,:window_size] = H
+    for i in range(window_size): #count zero crossings and store in last column of zero_crossings
+        x = 0
+        for j in range(window_size - 1):
+            if H[i, j] != H[i, j + 1]:
+                x = x + 1    
+        zero_crossings[i,window_size] = x
+    zero_crossings = zero_crossings[zero_crossings[:, window_size].argsort()] #rearrange rows as based on values in last column
+    H = zero_crossings[:window_size,:window_size] #store ordered matrix in H
+    
+    #set up output arrays
+    window_number = audio_array.shape[0] #how many windows are needed
+    X = np.zeros((audio_array.shape[0] + window_size - 1, audio_array.shape[1])) #add empty length for sliding window
+    X[:audio_array.shape[0],:] = audio_array
+    audio_array = X
+    output_array = np.copy(audio_array)
+
+    for j in range(window_number):
+        window_end = j + window_size
+        window_array = audio_array[j:window_end,:]
+        #print("H before calc", H)
+        #print("window array before calc", window_array)
+        #print("audio array before calc2", audio_array)
+        output_array[j:window_end,:] = (1 / np.sqrt(2)) * np.matmul(H, window_array)
+
+    return output_array
+
+
+
 
 #windowed delay feedback system
 def feedbackdelay(audio_array, delay_time_ms, feedback_gain, sample_rate):
